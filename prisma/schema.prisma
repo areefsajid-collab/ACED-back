@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  password  String
+  name      String
+  grade     Int?
+  googleId  String? @unique
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  progress  UserProgress[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model UserProgress {
+  id          Int     @id @default(autoincrement())
+  userId      Int
+  worksheetId Int
+  isCompleted Boolean @default(false)
+  score       Int?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worksheet Worksheet @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, worksheetId])
+  @@map("user_progress")
+}
+
+model RefreshToken {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  token     String  @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Worksheet {
+  id          Int     @id @default(autoincrement())
+  subject     String
+  grade       Int
+  topic       String
+  title       String
+  difficulty  String
+  content     Json
+  generatedBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  progress    UserProgress[]
+
+  @@unique([subject, grade, topic])
+  @@map("worksheets")
+}
