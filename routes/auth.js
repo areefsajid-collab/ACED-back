@@ -41,22 +41,20 @@ router.get('/google', passport.authenticate('google', {
 router.get(
   '/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/api/auth/google/failed' }),
-  (req, res) => {
-    const user = req.user;
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
-    const refreshToken = jwt.sign({ userId: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  async (req, res) => {
+    try {
+      const user = req.user;
+      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+      const refreshToken = jwt.sign({ userId: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    prisma.refreshToken
-      .create({ data: { userId: user.id, token: refreshToken, expiresAt } })
-      .then(() => {
-        res.json({
-          token,
-          refreshToken,
-          user: { id: user.id, email: user.email, name: user.name },
-        });
-      })
-      .catch((error) => res.status(500).json({ error: error.message }));
+      await prisma.refreshToken.create({ data: { userId: user.id, token: refreshToken, expiresAt } });
+
+      const frontend = process.env.FRONTEND_URL || 'http://127.0.0.1:5500/main.html';
+      res.redirect(`${frontend}#token=${token}&refresh=${refreshToken}`);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   }
 );
 

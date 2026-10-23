@@ -55,4 +55,37 @@ const getMyProgress = async (req, res) => {
   }
 };
 
-module.exports = { markComplete, markIncomplete, getMyProgress };
+
+// GET /api/users/progress/summary
+const getProgressSummary = async (req, res) => {
+  try {
+    const totals = await prisma.worksheet.groupBy({
+      by: ["subject", "grade"],
+      where: { status: "approved" },
+      _count: { id: true },
+    });
+
+    const done = await prisma.userProgress.findMany({
+      where: { userId: req.userId, isCompleted: true, worksheet: { status: "approved" } },
+      select: { worksheet: { select: { subject: true, grade: true } } },
+    });
+
+    const doneCount = {};
+    done.forEach(({ worksheet }) => {
+      const key = `${worksheet.subject}-${worksheet.grade}`;
+      doneCount[key] = (doneCount[key] || 0) + 1;
+    });
+
+    const summary = totals.map((row) => ({
+      subject: row.subject,
+      grade: row.grade,
+      total: row._count.id,
+      done: doneCount[`${row.subject}-${row.grade}`] || 0,
+    }));
+
+    res.json({ summary });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+module.exports = { markComplete, markIncomplete, getMyProgress, getProgressSummary };
