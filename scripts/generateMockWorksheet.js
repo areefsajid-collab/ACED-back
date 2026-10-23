@@ -308,7 +308,7 @@ async function runOne(t) {
   console.log(`Saved draft id ${row.id}: ${data.title} -> output/${base}.docx`);
 }
 
-(async () => {
+if (require.main === module)(async () => {
   if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is missing from .env");
 
   for (const t of MOCK_BATCH) {
@@ -318,7 +318,7 @@ async function runOne(t) {
       console.error(`Failed: ${t.topic}. ${e.message}`);
     }
   }
-
+module.exports = { generate, buildDocx, MODEL };
   await prisma.$disconnect();
   console.log("Batch finished. Review drafts in Prisma Studio (npx prisma studio).");
 })();
