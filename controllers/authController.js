@@ -1,8 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-
-const prisma = new PrismaClient();
 
 const generateTokens = (userId) => {
   const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '15m' });
@@ -88,16 +86,13 @@ const refresh = async (req, res) => {
       return res.status(400).json({ error: 'Refresh token required' });
     }
 
-    // 1. Check the token's signature and expiry
     const payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
-    // 2. Check it's still stored in the database (not logged out / revoked)
     const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
     if (!stored) {
       return res.status(401).json({ error: 'Refresh token not recognized' });
     }
 
-    // 3. Issue a new access token
     const token = jwt.sign({ userId: payload.userId }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
     res.json({ token });

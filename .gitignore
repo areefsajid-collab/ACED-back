@@ -4,3 +4,12 @@ node_modules
 .claude/
 .cursor/
 .devin/
+node_modules
+imports
+*.sql
+output
+imports
+*.sql
+npm-debug.log*
+.DS_Store
+Thumbs.db

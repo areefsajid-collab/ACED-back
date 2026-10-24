@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../config/prisma');
 
 // POST /api/worksheets/:id/complete
 const markComplete = async (req, res) => {
@@ -55,7 +53,6 @@ const getMyProgress = async (req, res) => {
   }
 };
 
-
 // GET /api/users/progress/summary
 const getProgressSummary = async (req, res) => {
   try {
@@ -88,4 +85,5 @@ const getProgressSummary = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 module.exports = { markComplete, markIncomplete, getMyProgress, getProgressSummary };

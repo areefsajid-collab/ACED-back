@@ -1,19 +1,21 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
+const mammoth = require('mammoth');
 
-const prisma = new PrismaClient();
-const path = require('path');
-const fs = require('fs');
-const { get } = require('http');
-
-// GET /api/worksheets?subject=maths&grade=5&topic=addition
+// GET /api/worksheets?subject=maths&grade=5&search=fractions
 const getWorksheets = async (req, res) => {
   try {
-    const { subject, grade, topic } = req.query;
+    const { subject, grade, topic, search } = req.query;
 
-    const where = {status : "approved"};
+    const where = { status: 'approved' };
     if (subject) where.subject = subject;
     if (grade) where.grade = parseInt(grade);
     if (topic) where.topic = topic;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { topic: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
     const worksheets = await prisma.worksheet.findMany({
       where,
@@ -31,13 +33,37 @@ const getWorksheets = async (req, res) => {
 const getWorksheetById = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const worksheet = await prisma.worksheet.findUnique({ where: { id, status : "approved" } });
+    const worksheet = await prisma.worksheet.findFirst({
+      where: { id, status: 'approved' },
+      select: { id: true, subject: true, grade: true, topic: true, title: true, difficulty: true, content: true },
+    });
 
     if (!worksheet) {
       return res.status(404).json({ error: 'Worksheet not found' });
     }
-
     res.json({ worksheet });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// GET /api/worksheets/:id/preview
+// Converts the stored Word file to HTML and removes the answer key.
+const getWorksheetPreview = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const worksheet = await prisma.worksheet.findFirst({
+      where: { id, status: 'approved' },
+      select: { docx: true },
+    });
+
+    if (!worksheet || !worksheet.docx) {
+      return res.status(404).json({ error: 'Word file not found' });
+    }
+
+    const { value: html } = await mammoth.convertToHtml({ buffer: Buffer.from(worksheet.docx) });
+    const cut = html.search(/<h[1-6][^>]*>\s*answer key/i);
+    res.json({ html: cut === -1 ? html : html.slice(0, cut) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -47,21 +73,21 @@ const getWorksheetById = async (req, res) => {
 const getWorksheetDownload = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const worksheet = await prisma.worksheet.findFirst({ where: { id, status: 'approved' } });
-    if (!worksheet) {
-      return res.status(404).json({ error: 'Worksheet not found' });
+    const worksheet = await prisma.worksheet.findFirst({
+      where: { id, status: 'approved' },
+      select: { id: true, subject: true, grade: true, docx: true },
+    });
+
+    if (!worksheet || !worksheet.docx) {
+      return res.status(404).json({ error: 'Word file not found' });
     }
 
-    const file = path.join(__dirname, '..', 'output', `g${worksheet.grade}_${worksheet.subject}_${worksheet.id}.docx`);
-    if (!fs.existsSync(file)) {
-      return res.status(404).json({ error: 'Word file not generated yet' });
-    }
-
-    res.download(file, `ACED_${worksheet.subject}_grade${worksheet.grade}_${worksheet.id}.docx`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="ACED_${worksheet.subject}_grade${worksheet.grade}_${worksheet.id}.docx"`);
+    res.send(Buffer.from(worksheet.docx));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-
-module.exports = { getWorksheets, getWorksheetById, getWorksheetDownload };
+module.exports = { getWorksheets, getWorksheetById, getWorksheetPreview, getWorksheetDownload };

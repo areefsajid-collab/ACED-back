@@ -1,8 +1,7 @@
 const express = require('express');
 const { register, login, refresh } = require('../controllers/authController');
 const { requireAuth } = require('../middleware/auth');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/prisma');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 
@@ -11,8 +10,6 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.post('/refresh', refresh);
-
-
 
 router.get('/profile', requireAuth, async (req, res) => {
   try {
@@ -31,13 +28,13 @@ router.get('/profile', requireAuth, async (req, res) => {
   }
 });
 
-// Step A: redirect the user to Google's login page
+// Step A: redirect user to Google login
 router.get('/google', passport.authenticate('google', {
   scope: ['profile', 'email'],
   session: false,
 }));
 
-// Step B: Google sends the user back here after they log in
+// Step B: Google callback
 router.get(
   '/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/api/auth/google/failed' }),
