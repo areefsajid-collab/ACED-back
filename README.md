@@ -1,2 +1,4 @@
-# ACED-back
-This is the repo for the backend for my website. I used node js, express, postgresql and prisma for it.
+ACED* exists because good learning materials shouldn’t depend on which school a child attends. It gives families and teachers free, printable worksheets that follow the national, Oxford and Cambridge syllabuses, so children can practise on paper and tick off what they’ve done. Parents and children can sign in to track which worksheets are complete, by grade and subject. The aim is simple: make quality practice available to any child, for free.
+
+
+ACED* backend: the Express and PostgreSQL API behind the ACED* worksheet site. Handles sign-up and login (email and Google), JWT sessions, worksheet listing, previews and downloads, and progress tracking. Worksheets are stored in a Neon PostgreSQL database and managed with a single command-line tool (scripts/manage.js). Built with Node.js, Express, Prisma and Passport.
