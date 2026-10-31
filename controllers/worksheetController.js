@@ -2,25 +2,36 @@ const prisma = require('../config/prisma');
 const mammoth = require('mammoth');
 
 // GET /api/worksheets?subject=maths&grade=5&search=fractions
-// ACED-back-master/controllers/worksheetController.js
-
 const getWorksheets = async (req, res) => {
   try {
-    const { subject, grade } = req.query;
+    const { subject, grade, topic, search } = req.query;
+
+    const where = { status: 'approved' };
+    if (subject) where.subject = subject;
+    if (grade) where.grade = parseInt(grade);
+    if (topic) where.topic = topic;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { topic: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
     const worksheets = await prisma.worksheet.findMany({
-      where: {
-        subject: subject,
-        grade: parseInt(grade) // Ensures string '2' matches integer 2 in Neon
-      }
+      where,
+      select: { id: true, subject: true, grade: true, topic: true, title: true, difficulty: true },
+      orderBy: [{ grade: 'asc' }, { topic: 'asc' }],
     });
 
-    // ABSOLUTE FIX: Prevent Vercel/Express 304 caching
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    // ABSOLUTE FIX: Prevent 304 caching
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
-    return res.status(200).json(worksheets);
+    // ABSOLUTE FIX: Return raw array directly so frontend .length checks pass
+    res.json(worksheets);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -36,6 +47,8 @@ const getWorksheetById = async (req, res) => {
     if (!worksheet) {
       return res.status(404).json({ error: 'Worksheet not found' });
     }
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({ worksheet });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -43,7 +56,6 @@ const getWorksheetById = async (req, res) => {
 };
 
 // GET /api/worksheets/:id/preview
-// Converts the stored Word file to HTML and removes the answer key.
 const getWorksheetPreview = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -58,6 +70,8 @@ const getWorksheetPreview = async (req, res) => {
 
     const { value: html } = await mammoth.convertToHtml({ buffer: Buffer.from(worksheet.docx) });
     const cut = html.search(/<h[1-6][^>]*>\s*answer key/i);
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({ html: cut === -1 ? html : html.slice(0, cut) });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -77,6 +91,7 @@ const getWorksheetDownload = async (req, res) => {
       return res.status(404).json({ error: 'Word file not found' });
     }
 
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename="ACED_${worksheet.subject}_grade${worksheet.grade}_${worksheet.id}.docx"`);
     res.send(Buffer.from(worksheet.docx));
