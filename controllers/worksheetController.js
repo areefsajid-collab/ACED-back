@@ -2,30 +2,25 @@ const prisma = require('../config/prisma');
 const mammoth = require('mammoth');
 
 // GET /api/worksheets?subject=maths&grade=5&search=fractions
+// ACED-back-master/controllers/worksheetController.js
+
 const getWorksheets = async (req, res) => {
   try {
-    const { subject, grade, topic, search } = req.query;
-
-    const where = { status: 'approved' };
-    if (subject) where.subject = subject;
-    if (grade) where.grade = parseInt(grade);
-    if (topic) where.topic = topic;
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { topic: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    const { subject, grade } = req.query;
 
     const worksheets = await prisma.worksheet.findMany({
-      where,
-      select: { id: true, subject: true, grade: true, topic: true, title: true, difficulty: true },
-      orderBy: [{ grade: 'asc' }, { topic: 'asc' }],
+      where: {
+        subject: subject,
+        grade: parseInt(grade) // Ensures string '2' matches integer 2 in Neon
+      }
     });
 
-    res.json({ count: worksheets.length, worksheets });
+    // ABSOLUTE FIX: Prevent Vercel/Express 304 caching
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+    return res.status(200).json(worksheets);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
