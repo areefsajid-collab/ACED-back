@@ -32,7 +32,7 @@ passport.use(new GoogleStrategy({
           googleId: profile.id,
           email: email,
           name: profile.displayName,
-          emailVerified: true // Google already verified them
+           // Google already verified them
         }
       });
       return done(null, user);
