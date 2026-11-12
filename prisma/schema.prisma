@@ -8,20 +8,15 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
+  id        Int            @id @default(autoincrement())
+  email     String         @unique
   name      String
-  grade     Int?
-  googleId  String?  @unique
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  googleId  String?        @unique
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
-  progress      UserProgress[]
-  refreshTokens RefreshToken[]
-
-  @@map("users")
+  progress  UserProgress[]
+  tokens    RefreshToken[]
 }
 
 model UserProgress {
@@ -29,15 +24,13 @@ model UserProgress {
   userId      Int
   worksheetId Int
   isCompleted Boolean   @default(false)
-  score       Int?
   startedAt   DateTime  @default(now())
   completedAt DateTime?
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  worksheet Worksheet @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worksheet   Worksheet @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
 
   @@unique([userId, worksheetId])
-  @@map("user_progress")
 }
 
 model RefreshToken {
@@ -47,13 +40,11 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("refresh_tokens")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Worksheet {
-  id          Int      @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   subject     String
   grade       Int
   topic       String
@@ -61,13 +52,12 @@ model Worksheet {
   difficulty  String
   content     Json
   generatedBy String
-  status      String   @default("draft")
+  status      String         @default("draft")
   docx        Bytes?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  progress UserProgress[]
+  progress    UserProgress[]
 
   @@unique([subject, grade, topic])
-  @@map("worksheets")
 }
