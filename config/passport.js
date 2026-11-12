@@ -5,7 +5,7 @@ const prisma = require('./prisma');
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "callbackURL: https://nwvlgy3m4q02-production-v9cdeall.us-central1.suga.run/api/auth/google/callback"
+    callbackURL: " https://nwvlgy3m4q02-production-v9cdeall.us-central1.suga.run/api/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
