@@ -49,21 +49,43 @@ const getWorksheetById = async (req, res) => {
 
 // GET /api/worksheets/:id/preview
 // Converts the stored Word file to HTML and removes the answer key.
+// GET /api/worksheets/:id/preview
 const getWorksheetPreview = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const worksheet = await prisma.worksheet.findFirst({
       where: { id, status: 'approved' },
-      select: { docx: true },
+      select: { docx: true, htmlPreview: true }, // Select the cached HTML
     });
 
-    if (!worksheet || !worksheet.docx) {
+    if (!worksheet) {
+      return res.status(404).json({ error: 'Worksheet not found' });
+    }
+
+    // 1. CACHE HIT: If the HTML is already saved, return it instantly!
+    if (worksheet.htmlPreview) {
+      return res.json({ html: worksheet.htmlPreview });
+    }
+
+    // 2. CACHE MISS: If not, check if we have the Word file
+    if (!worksheet.docx) {
       return res.status(404).json({ error: 'Word file not found' });
     }
 
+    // 3. Convert the Word file to HTML
     const { value: html } = await mammoth.convertToHtml({ buffer: Buffer.from(worksheet.docx) });
+
+    // 4. Cut off the answer key (same logic as before)
     const cut = html.search(/<h[1-6][^>]*>\s*answer key/i);
-    res.json({ html: cut === -1 ? html : html.slice(0, cut) });
+    const finalHtml = cut === -1 ? html : html.slice(0, cut);
+
+    // 5. Save it to the database for next time!
+    await prisma.worksheet.update({
+      where: { id },
+      data: { htmlPreview: finalHtml }
+    });
+
+    res.json({ html: finalHtml });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
